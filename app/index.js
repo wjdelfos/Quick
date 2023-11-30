@@ -1,4 +1,6 @@
 import { Link } from "expo-router";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+
 import React, { useState } from "react";
 import {
   FlatList,
@@ -10,7 +12,16 @@ import {
   Image,
   View,
 } from "react-native";
-import { AntDesign } from "@expo/vector-icons"; // Import AntDesign icons
+import {
+  AntDesign,
+  FontAwesome5,
+  Ionicons,
+  MaterialCommunityIcons,
+  Entypo,
+} from "@expo/vector-icons";
+import Categories from "./Categories"; // Import the Categories component
+import Profile from "./Profile"; // Import the Profile component
+import MyTickets from "./MyTickets";
 
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
@@ -121,15 +132,8 @@ const Home = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>What to do tonight?</Text>
-      <Link
-        href={{
-          pathname: "/willem420",
-          params: { name: "willem" },
-        }}
-      >
-        Profile
-      </Link>
+      <Text style={styles.title}>Filtering</Text>
+
       <FlatList
         data={DATA}
         renderItem={renderItem}
@@ -195,4 +199,73 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Home;
+//export default Home;
+// New components for additional screens
+
+const Tab = createBottomTabNavigator();
+
+const MainNavigator = () => (
+  <Tab.Navigator
+    tabBarOptions={{
+      activeTintColor: "white",
+      inactiveTintColor: "white", // Change the inactive color to a subtle shade
+      labelStyle: {
+        fontSize: 12,
+      },
+    }}
+    screenOptions={{
+      headerShown: false,
+      tabBarStyle: {
+        height: 80,
+        paddingHorizontal: 5,
+        padding: 15,
+        backgroundColor: "#FF4D4D",
+        position: "absolute",
+        borderTopWidth: 0,
+      },
+    }}
+  >
+    <Tab.Screen
+      name="Home"
+      component={Home}
+      options={{
+        tabBarLabel: "Home",
+        tabBarIcon: ({ color, size }) => (
+          <FontAwesome5 name="home" size={size} color={color} />
+        ),
+      }}
+    />
+    <Tab.Screen
+      name="Categories"
+      component={Categories}
+      options={{
+        tabBarLabel: "Categories",
+        tabBarIcon: ({ color, size }) => (
+          <Ionicons name="ios-list" size={size} color={color} />
+        ),
+      }}
+    />
+    <Tab.Screen
+      name="Profile"
+      component={Profile}
+      options={{
+        tabBarLabel: "Profile",
+        tabBarIcon: ({ color, size }) => (
+          <MaterialCommunityIcons name="account" size={size} color={color} />
+        ),
+      }}
+    />
+    <Tab.Screen
+      name="MyTickets"
+      component={MyTickets}
+      options={{
+        tabBarLabel: "My Tickets",
+        tabBarIcon: ({ color, size }) => (
+          <Entypo name="ticket" size={size} color={color} />
+        ),
+      }}
+    />
+  </Tab.Navigator>
+);
+
+export default MainNavigator;
