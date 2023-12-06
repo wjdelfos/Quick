@@ -1,7 +1,7 @@
 import { Link } from "expo-router";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-
-import React, { useState } from "react";
+import { createStackNavigator } from "@react-navigation/stack";
+import React, { useState, useEffect } from "react";
 import {
   FlatList,
   SafeAreaView,
@@ -19,13 +19,14 @@ import {
   MaterialCommunityIcons,
   Entypo,
 } from "@expo/vector-icons";
-import Categories from "./Categories"; // Import the Categories component
-import Profile from "./Profile"; // Import the Profile component
+import Categories from "./Categories";
+import Profile from "./Profile";
 import MyTickets from "./MyTickets";
-
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
+import { getFirestore, collection, addDoc, getDocs } from "@firebase/firestore";
+
+//import auth from "@react-native-firebase/auth";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -40,7 +41,34 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+const db = getFirestore(app);
+const collectionRef = collection(db, "backenddata");
+
+// Write function to add data to Firestore
+const addDataToFirestore = async (data) => {
+  try {
+    const docRef = await addDoc(collectionRef, data);
+    console.log("Document written with ID: ", docRef.id);
+  } catch (e) {
+    console.error("Error adding document: ", e);
+  }
+};
+
+export const readDataFromFirestore = async () => {
+  try {
+    const querySnapshot = await getDocs(collectionRef);
+
+    const data = [];
+    querySnapshot.forEach((doc) => {
+      data.push({ id: doc.id, ...doc.data() });
+    });
+
+    return data;
+  } catch (error) {
+    console.error("Error fetching data from Firestore:", error);
+    throw error;
+  }
+};
 
 const DATA = [
   {
@@ -113,17 +141,35 @@ const Item = ({ item, onPress, backgroundColor, textColor }) => (
   </TouchableOpacity>
 );
 
-const Home = () => {
+const Home = ({ navigation }) => {
   const [selectedId, setSelectedId] = useState();
+  const [data, setData] = useState([]);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const newData = await readDataFromFirestore();
+        setData(newData);
+      } catch (error) {
+        console.log("jongens dit ging helemaal fout");
+        // Handle error
+      }
+    };
+
+    fetchData();
+  }, []);
   const renderItem = ({ item }) => {
-    const backgroundColor = item.id === selectedId ? "#6e3b6e" : "#FFFFFF";
-    const color = item.id === selectedId ? "white" : "black";
+    const backgroundColor = "#FFFFFF";
+    const color = "black";
 
     return (
       <Item
         item={item}
-        onPress={() => setSelectedId(item.id)}
+        onPress={() => {
+          setSelectedId(item.id);
+          //addDataToFirestore(item);
+          navigation.navigate("Details", { item });
+        }}
         backgroundColor={backgroundColor}
         textColor={color}
       />
@@ -133,9 +179,8 @@ const Home = () => {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Filtering</Text>
-
       <FlatList
-        data={DATA}
+        data={data}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         extraData={selectedId}
@@ -144,11 +189,125 @@ const Home = () => {
   );
 };
 
+const DetailsScreen = ({ route }) => {
+  const { item } = route.params;
+
+  return (
+    <View>
+      <Text>{item.title}</Text>
+      {/* Display other details of the item */}
+    </View>
+  );
+};
+
+const Stack = createStackNavigator();
+
+const createStackScreen = (name, component) => (
+  <Stack.Screen
+    name={name}
+    component={component}
+    options={{ headerShown: false }}
+  />
+);
+
+const HomeStackScreen = () => (
+  <Stack.Navigator mode="card" screenOptions={{ cardStyle: { flex: 1 } }}>
+    {createStackScreen("Home", Home)}
+    {createStackScreen("Details", DetailsScreen)}
+  </Stack.Navigator>
+);
+
+const CategoriesStackScreen = () => (
+  <Stack.Navigator>
+    {createStackScreen("Categories", Categories)}
+    {/* You can add more screens for the Categories tab if needed */}
+  </Stack.Navigator>
+);
+
+const ProfileStackScreen = () => (
+  <Stack.Navigator>
+    {createStackScreen("Profile", Profile)}
+    {/* You can add more screens for the Profile tab if needed */}
+  </Stack.Navigator>
+);
+
+const MyTicketsStackScreen = () => (
+  <Stack.Navigator>
+    {createStackScreen("MyTickets", MyTickets)}
+    {/* You can add more screens for the MyTickets tab if needed */}
+  </Stack.Navigator>
+);
+
+const Tab = createBottomTabNavigator();
+
+const MainNavigator = () => (
+  <Tab.Navigator
+    tabBarOptions={{
+      activeTintColor: "white",
+      inactiveTintColor: "white",
+      labelStyle: { fontSize: 12 },
+    }}
+    screenOptions={{
+      headerShown: false,
+      tabBarStyle: {
+        height: 80,
+        paddingHorizontal: 5,
+        padding: 15,
+        backgroundColor: "#FF4D4D",
+        position: "absolute",
+        borderTopWidth: 0,
+      },
+    }}
+  >
+    <Tab.Screen
+      name="Home"
+      component={HomeStackScreen}
+      options={{
+        tabBarLabel: "Home",
+        tabBarIcon: ({ color, size }) => (
+          <FontAwesome5 name="home" size={size} color={color} />
+        ),
+      }}
+    />
+    <Tab.Screen
+      name="Categories"
+      component={CategoriesStackScreen}
+      options={{
+        tabBarLabel: "Categories",
+        tabBarIcon: ({ color, size }) => (
+          <Ionicons name="ios-list" size={size} color={color} />
+        ),
+      }}
+    />
+    <Tab.Screen
+      name="Profile"
+      component={ProfileStackScreen}
+      options={{
+        tabBarLabel: "Profile",
+        tabBarIcon: ({ color, size }) => (
+          <MaterialCommunityIcons name="account" size={size} color={color} />
+        ),
+      }}
+    />
+    <Tab.Screen
+      name="MyTickets"
+      component={MyTicketsStackScreen}
+      options={{
+        tabBarLabel: "My Tickets",
+        tabBarIcon: ({ color, size }) => (
+          <Entypo name="ticket" size={size} color={color} />
+        ),
+      }}
+    />
+  </Tab.Navigator>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: StatusBar.currentHeight || 0,
     backgroundColor: "#FFE6E6",
+    marginBottom: 80,
   },
   cardContainer: {
     flexDirection: "column",
@@ -198,74 +357,5 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 });
-
-//export default Home;
-// New components for additional screens
-
-const Tab = createBottomTabNavigator();
-
-const MainNavigator = () => (
-  <Tab.Navigator
-    tabBarOptions={{
-      activeTintColor: "white",
-      inactiveTintColor: "white", // Change the inactive color to a subtle shade
-      labelStyle: {
-        fontSize: 12,
-      },
-    }}
-    screenOptions={{
-      headerShown: false,
-      tabBarStyle: {
-        height: 80,
-        paddingHorizontal: 5,
-        padding: 15,
-        backgroundColor: "#FF4D4D",
-        position: "absolute",
-        borderTopWidth: 0,
-      },
-    }}
-  >
-    <Tab.Screen
-      name="Home"
-      component={Home}
-      options={{
-        tabBarLabel: "Home",
-        tabBarIcon: ({ color, size }) => (
-          <FontAwesome5 name="home" size={size} color={color} />
-        ),
-      }}
-    />
-    <Tab.Screen
-      name="Categories"
-      component={Categories}
-      options={{
-        tabBarLabel: "Categories",
-        tabBarIcon: ({ color, size }) => (
-          <Ionicons name="ios-list" size={size} color={color} />
-        ),
-      }}
-    />
-    <Tab.Screen
-      name="Profile"
-      component={Profile}
-      options={{
-        tabBarLabel: "Profile",
-        tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons name="account" size={size} color={color} />
-        ),
-      }}
-    />
-    <Tab.Screen
-      name="MyTickets"
-      component={MyTickets}
-      options={{
-        tabBarLabel: "My Tickets",
-        tabBarIcon: ({ color, size }) => (
-          <Entypo name="ticket" size={size} color={color} />
-        ),
-      }}
-    />
-  </Tab.Navigator>
-);
 
 export default MainNavigator;
